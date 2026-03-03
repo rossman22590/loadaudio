@@ -44,7 +44,7 @@ class LoadAudioFromURL:
         Load audio from URL and return in ComfyUI format.
         
         Returns:
-            tuple: ({"waveform": tensor, "sample_rate": int},)
+            tuple: (audio_dict,) where audio_dict contains waveform tensor and sample_rate
         """
         
         if not url or url.strip() == "":
@@ -62,6 +62,9 @@ class LoadAudioFromURL:
             # Load audio using soundfile
             audio_data, sample_rate = sf.read(tmp_path)
             
+            # Convert to float32 first
+            audio_data = audio_data.astype(np.float32)
+            
             # Handle mono/stereo
             if len(audio_data.shape) == 1:
                 # Mono - reshape to (1, samples)
@@ -77,17 +80,14 @@ class LoadAudioFromURL:
                     audio_data = audio_data[:, :max_frames]
                     print(f"Audio capped to {frame_load_cap} seconds")
             
-            # Convert to float32 and normalize to [-1, 1] range
-            audio_data = audio_data.astype(np.float32)
-            
-            # Normalize if needed
+            # Normalize to [-1, 1] range if needed
             max_val = np.max(np.abs(audio_data))
             if max_val > 1.0:
                 audio_data = audio_data / max_val
             
-            # Convert to torch tensor
+            # Convert to torch tensor - shape should be (channels, samples)
             import torch
-            waveform = torch.from_numpy(audio_data).unsqueeze(0)  # Add batch dimension
+            waveform = torch.from_numpy(audio_data)
             
             print(f"Audio loaded successfully. Sample rate: {sample_rate}, Shape: {waveform.shape}")
             
